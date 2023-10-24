@@ -26,6 +26,7 @@
         "usb_stm32",
         "appframe",
         "assets",
+        "uzlib",
         "one_wire",
         "music_worker",
         "misc",
