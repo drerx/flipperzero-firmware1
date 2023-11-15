@@ -38,8 +38,7 @@ SConscript("site_scons/cc.scons", exports={"ENV": coreenv})
 distenv = coreenv.Clone(
     tools=[
         "fbt_dist",
-        "fbt_debugopts",
-        "openocd",
+        "fbt_debug",
         "blackmagic",
         "jflash",
     ],
@@ -172,17 +171,19 @@ Alias("fap_dist", fap_dist)
 
 fap_deploy = distenv.PhonyTarget(
     "fap_deploy",
-    [
+    Action(
         [
-            "${PYTHON3}",
-            "${FBT_SCRIPT_DIR}/storage.py",
-            "-p",
-            "${FLIP_PORT}",
-            "send",
-            "${SOURCE}",
-            "/ext/apps",
+            [
+                "${PYTHON3}",
+                "${FBT_SCRIPT_DIR}/storage.py",
+                "-p",
+                "${FLIP_PORT}",
+                "send",
+                "${SOURCE}",
+                "/ext/apps",
+            ]
         ]
-    ],
+    ),
     source=firmware_env.Dir(("${RESOURCES_ROOT}/apps")),
 )
 Depends(fap_deploy, firmware_env["FW_RESOURCES_MANIFEST"])
@@ -217,6 +218,18 @@ distenv.PhonyTarget(
         "quit",
     ],
 )
+
+debug2 = distenv.GDB(
+    source=firmware_env["FW_ELF"],
+    GDBOPTS=[
+        "source scripts/debug/gdbinit",
+        "source /Users/hedger/tmp/ufbt_test/fw with spaces/scripts/debug/FreeRTOS/FreeRTOS.py",
+        "source /Users/hedger/tmp/ufbt_test/fw with spaces/scripts/debug/flipperapps.py",
+        "source /Users/hedger/tmp/ufbt_test/fw with spaces/scripts/debug/flipperversion.py",
+    ],
+)
+distenv.Pseudo(debug2)
+distenv.Alias("debug2", debug2)
 
 # Debugging firmware
 firmware_debug = distenv.PhonyTarget(
@@ -261,28 +274,21 @@ distenv.PhonyTarget(
 distenv.PhonyTarget(
     "debug_other_blackmagic",
     "${GDBPYCOM}",
-    GDBOPTS="${GDBOPTS_BASE}  ${GDBOPTS_BLACKMAGIC}",
+    GDBOPTS="${GDBOPTS_BASE} ${GDBOPTS_BLACKMAGIC}",
     GDBREMOTE="${BLACKMAGIC_ADDR}",
     GDBPYOPTS=debug_other_opts,
-)
-
-
-# Just start OpenOCD
-distenv.PhonyTarget(
-    "openocd",
-    "${OPENOCDCOM}",
 )
 
 # Linter
 distenv.PhonyTarget(
     "lint",
-    "${PYTHON3} ${FBT_SCRIPT_DIR}/lint.py check ${LINT_SOURCES}",
+    [["${PYTHON3}", "${FBT_SCRIPT_DIR}/lint.py", "check", "${LINT_SOURCES}"]],
     LINT_SOURCES=[n.srcnode() for n in firmware_env["LINT_SOURCES"]],
 )
 
 distenv.PhonyTarget(
     "format",
-    "${PYTHON3} ${FBT_SCRIPT_DIR}/lint.py format ${LINT_SOURCES}",
+    [["${PYTHON3}", "${FBT_SCRIPT_DIR}/lint.py", "format", "${LINT_SOURCES}"]],
     LINT_SOURCES=[n.srcnode() for n in firmware_env["LINT_SOURCES"]],
 )
 
@@ -323,10 +329,14 @@ distenv.PhonyTarget(
 )
 
 # Start Flipper CLI via PySerial's miniterm
-distenv.PhonyTarget("cli", "${PYTHON3} ${FBT_SCRIPT_DIR}/serial_cli.py -p ${FLIP_PORT}")
+distenv.PhonyTarget(
+    "cli", [["${PYTHON3}", "${FBT_SCRIPT_DIR}/serial_cli.py", "-p", "${FLIP_PORT}"]]
+)
 
 # Update WiFi devboard firmware
-distenv.PhonyTarget("devboard_flash", "${PYTHON3} ${FBT_SCRIPT_DIR}/wifi_board.py")
+distenv.PhonyTarget(
+    "devboard_flash", [["${PYTHON3}", "${FBT_SCRIPT_DIR}/wifi_board.py"]]
+)
 
 
 # Find blackmagic probe
@@ -361,5 +371,5 @@ distenv.Alias("vscode_dist", vscode_dist)
 # Configure shell with build tools
 distenv.PhonyTarget(
     "env",
-    "@echo $( ${FBT_SCRIPT_DIR}/toolchain/fbtenv.sh $)",
+    "@echo $( ${FBT_SCRIPT_DIR.abspath}/toolchain/fbtenv.sh $)",
 )
