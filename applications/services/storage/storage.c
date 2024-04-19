@@ -42,9 +42,10 @@ Storage* storage_app_alloc(void) {
         storage_data_timestamp(&app->storage[i]);
     }
 
-#ifndef FURI_RAM_EXEC
+#if defined(STORAGE_INT_ON_LFS) && !defined(FURI_RAM_EXEC)
     storage_int_init(&app->storage[ST_INT]);
 #endif
+
     storage_ext_init(&app->storage[ST_EXT]);
 
     // sd icon gui
